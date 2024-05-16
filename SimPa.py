@@ -15,41 +15,46 @@ class DPA:
             temp = line[:-1].split("->")
             self.CONST_DPA_DICT[temp[0]] = temp[1]
 
-    def _test_epsilon_states(self, temp_current_state, temp_initial_stack):
-        for k in self.CONST_DPA_DICT.keys():
-            if temp_current_state in k and "$" in k and temp_initial_stack[0] in k:
-                transition = self.CONST_DPA_DICT[k].split(",")
-                if temp_current_state in self.acc_states_arr and transition[0] not in self.acc_states_arr:
+    def _test_epsilon_states(self, temp_current_state, temp_stack):
+        for key in self.CONST_DPA_DICT.keys():
+            if temp_current_state in key and "$" in key:
+                if temp_stack[0] in key:
+                    transition = self.CONST_DPA_DICT[key].split(",")
+                    if temp_current_state in self.acc_states_arr and transition[0] not in self.acc_states_arr:
+                        continue
+                    temp_stack.pop(0)
+                    temp_stack[:0] = [*transition[1]]
+                    temp_current_state = transition[0]
+                    if len(temp_stack) > 0:
+                        current_string = temp_current_state + "#" + "".join(temp_stack)
+                    else:
+                        current_string = temp_current_state + "#" + "$"
+                    print(current_string, end="|")
                     continue
-                temp_initial_stack.pop(0)
-                temp_initial_stack[:0] = [*transition[1]]
-                temp_current_state = transition[0]
-                if len(temp_initial_stack) > 0:
-                    current_string = temp_current_state + "#" + "".join(temp_initial_stack)
                 else:
-                    current_string = temp_current_state + "#" + "$"
-                print(current_string, end="|")
-                continue
-        return temp_current_state, temp_initial_stack
+                    return temp_current_state, temp_stack, False
+        return temp_current_state, temp_stack, True
     
     # Format dpa dictionarija: [trenutno_stanje, trenutni_simbol, vrh_stoga -> sljedece_stanje, novi_vrh_stoga]
     # Format ulaza: a,b,c,a,c,a,b,...
     def simulate(self, input):
         current_state = self.CONST_CURRENT_STATE
-        initial_stack = self.CONST_STACK.copy()
-        print(current_state + "#" + initial_stack[0] + "|", end="")
+        stack = self.CONST_STACK.copy()
+        success = False
+        print(current_state + "#" + stack[0] + "|", end="")
         for idx, el in enumerate(input): # Enumeriram da znam kad sam u zadnjoj iteraciji           
             
-            current_state, initial_stack = self._test_epsilon_states(current_state, initial_stack.copy())
+            if not success:
+                current_state, stack, success = self._test_epsilon_states(current_state, stack.copy())
 
-            current_key = ",".join([current_state, el , initial_stack.pop(0)])
+            current_key = ",".join([current_state, el , stack.pop(0)])
             if current_key in self.CONST_DPA_DICT.keys():
                 next_state = self.CONST_DPA_DICT[current_key].split(",")
                 current_state = next_state[0]
                 if next_state[1] != "$":
-                    initial_stack[:0] = [*next_state[1]]
-                if len(initial_stack) > 0:
-                    current_string = current_state + "#" + "".join(initial_stack)
+                    stack[:0] = [*next_state[1]]
+                if len(stack) > 0:
+                    current_string = current_state + "#" + "".join(stack)
                 else:
                     current_string = current_state + "#" + "$"
                 print(current_string, end="|")
@@ -59,7 +64,7 @@ class DPA:
                 break
             
             if idx != len(input) - 1 or current_state not in self.acc_states_arr:
-                current_state, initial_stack = self._test_epsilon_states(current_state, initial_stack.copy())
+                current_state, stack, success = self._test_epsilon_states(current_state, stack.copy())
 
         if current_state in self.acc_states_arr:
             print(1)

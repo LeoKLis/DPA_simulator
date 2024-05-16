@@ -10,37 +10,53 @@ class DPA:
         self.stack_arr = stack_arr
         self.acc_states_arr = acc_states_arr
         self.current_state = init_state
-        if stack_state < 'A' and stack_state > 'Z':
+        if stack_state > 'A' and stack_state < 'Z':
             self.stack.insert(0, stack_state)
-        self.dpa_dict = self._build_dpa()
-    
+        self._build_dpa()
+
     def _build_dpa(self):
         for line in sys.stdin:
-            temp = line.split("->")
+            temp = line[:-1].split("->")
             self.dpa_dict[temp[0]] = temp[1]
 
     def simulate(self, input):
+        print(self.current_state + "#" + self.stack[0] + "|", end="")
         for el in input:
-            current_key = ",".join([self.current_state, el , self.stack.pop(0)])
-            if current_key in self.dpa_dict:
-                if self.stack:
-                    current_string = self.current_state + "#" + "".join(self.stack) + "|"
-                else:
-                    current_string = self.current_state + "#" + "$" + "|"
-                transition = self.dpa_dict[current_key].split(",")
+            print(self.stack)
+            stack_element = self.stack.pop(0)
+            if self.current_state not in self.acc_states_arr:
+                for k in self.dpa_dict.keys():
+                    if self.current_state in k and "$" in k and stack_element in k:
+                        # print("(U epsilon dijelu sam)", end="")
+                        transition = self.dpa_dict[k].split(",")
+                        self.stack[:0] = [*transition[1]]
+                        self.current_state = transition[0]
+                        current_string = self.current_state + "#" + "".join(self.stack)
+                        print(current_string, end="|")
+                        continue
+            current_key = ",".join([self.current_state, el , stack_element])
+            if current_key in self.dpa_dict.keys():
+                # print("(U normalnom dijelu sam)", end="")
+                transition = self.dpa_dict[current_key].split(",") # Sljedece stanje i upis na stog
                 self.current_state = transition[0]
                 if transition[1] != "$":
                     self.stack[:0] = [*transition[1]]
+                if len(self.stack) > 0:
+                    current_string = self.current_state + "#" + "".join(self.stack) + "|"
+                else:
+                    current_string = self.current_state + "#" + "$" + "|"
                 print(current_string, end="")
             else:
-                current_string = "fail|"
+                print("fail|", end="")
                 self.current_state = "-"
                 success = 0
                 break
         if self.current_state in self.acc_states_arr:
             success = 1
+        else:
+            success = 0
         print(success)
-
+# Rjesiti epsilon prijelaze, pa ce to bit pri kraju rjesavanja!!!!
 def main():
     input_arr = input().split("|")
     states_arr = input().split(",")

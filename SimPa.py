@@ -1,62 +1,71 @@
 import sys
 
 class DPA:
-    dpa_dict = {}
-    stack = []
+    CONST_DPA_DICT = {}
+    CONST_STACK = []
 
-    def __init__(self, states_arr, symbols_arr, stack_arr, acc_states_arr, init_state, stack_state):
-        self.states_arr = states_arr
-        self.symbols_arr = symbols_arr
-        self.stack_arr = stack_arr
+    def __init__(self, init_state, stack_state, acc_states_arr):
         self.acc_states_arr = acc_states_arr
-        self.current_state = init_state
-        if stack_state > 'A' and stack_state < 'Z':
-            self.stack.insert(0, stack_state)
-        self._build_dpa()
+        self.CONST_CURRENT_STATE = init_state
+        self.CONST_STACK.insert(0, stack_state)
+        self._init_dpa()
 
-    def _build_dpa(self):
+    def _init_dpa(self):
         for line in sys.stdin:
             temp = line[:-1].split("->")
-            self.dpa_dict[temp[0]] = temp[1]
+            self.CONST_DPA_DICT[temp[0]] = temp[1]
 
-    def simulate(self, input):
-        print(self.current_state + "#" + self.stack[0] + "|", end="")
-        for el in input:
-            print(self.stack)
-            stack_element = self.stack.pop(0)
-            if self.current_state not in self.acc_states_arr:
-                for k in self.dpa_dict.keys():
-                    if self.current_state in k and "$" in k and stack_element in k:
-                        # print("(U epsilon dijelu sam)", end="")
-                        transition = self.dpa_dict[k].split(",")
-                        self.stack[:0] = [*transition[1]]
-                        self.current_state = transition[0]
-                        current_string = self.current_state + "#" + "".join(self.stack)
-                        print(current_string, end="|")
-                        continue
-            current_key = ",".join([self.current_state, el , stack_element])
-            if current_key in self.dpa_dict.keys():
-                # print("(U normalnom dijelu sam)", end="")
-                transition = self.dpa_dict[current_key].split(",") # Sljedece stanje i upis na stog
-                self.current_state = transition[0]
-                if transition[1] != "$":
-                    self.stack[:0] = [*transition[1]]
-                if len(self.stack) > 0:
-                    current_string = self.current_state + "#" + "".join(self.stack) + "|"
+    def _test_epsilon_states(self, temp_current_state, temp_initial_stack):
+        for k in self.CONST_DPA_DICT.keys():
+            if temp_current_state in k and "$" in k and temp_initial_stack[0] in k:
+                transition = self.CONST_DPA_DICT[k].split(",")
+                if temp_current_state in self.acc_states_arr and transition[0] not in self.acc_states_arr:
+                    continue
+                temp_initial_stack.pop(0)
+                temp_initial_stack[:0] = [*transition[1]]
+                temp_current_state = transition[0]
+                if len(temp_initial_stack) > 0:
+                    current_string = temp_current_state + "#" + "".join(temp_initial_stack)
                 else:
-                    current_string = self.current_state + "#" + "$" + "|"
-                print(current_string, end="")
+                    current_string = temp_current_state + "#" + "$"
+                print(current_string, end="|")
+                continue
+        return temp_current_state, temp_initial_stack
+    
+    # Format dpa dictionarija: [trenutno_stanje, trenutni_simbol, vrh_stoga -> sljedece_stanje, novi_vrh_stoga]
+    # Format ulaza: a,b,c,a,c,a,b,...
+    def simulate(self, input):
+        current_state = self.CONST_CURRENT_STATE
+        initial_stack = self.CONST_STACK.copy()
+        print(current_state + "#" + initial_stack[0] + "|", end="")
+        for idx, el in enumerate(input): # Enumeriram da znam kad sam u zadnjoj iteraciji           
+            
+            current_state, initial_stack = self._test_epsilon_states(current_state, initial_stack.copy())
+
+            current_key = ",".join([current_state, el , initial_stack.pop(0)])
+            if current_key in self.CONST_DPA_DICT.keys():
+                next_state = self.CONST_DPA_DICT[current_key].split(",")
+                current_state = next_state[0]
+                if next_state[1] != "$":
+                    initial_stack[:0] = [*next_state[1]]
+                if len(initial_stack) > 0:
+                    current_string = current_state + "#" + "".join(initial_stack)
+                else:
+                    current_string = current_state + "#" + "$"
+                print(current_string, end="|")
             else:
                 print("fail|", end="")
-                self.current_state = "-"
-                success = 0
+                current_state = "-"
                 break
-        if self.current_state in self.acc_states_arr:
-            success = 1
+            
+            if idx != len(input) - 1 or current_state not in self.acc_states_arr:
+                current_state, initial_stack = self._test_epsilon_states(current_state, initial_stack.copy())
+
+        if current_state in self.acc_states_arr:
+            print(1)
         else:
-            success = 0
-        print(success)
-# Rjesiti epsilon prijelaze, pa ce to bit pri kraju rjesavanja!!!!
+            print(0)
+
 def main():
     input_arr = input().split("|")
     states_arr = input().split(",")
@@ -66,7 +75,7 @@ def main():
     init_state = input()
     stack_state = input()
 
-    automata = DPA(states_arr, symbols_arr, stack_arr, acc_states_arr, init_state, stack_state)
+    automata = DPA(init_state, stack_state, acc_states_arr)
 
     for el in input_arr:
         automata.simulate(el.split(","))
